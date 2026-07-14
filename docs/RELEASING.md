@@ -27,7 +27,7 @@ manifest while packing it.
 
 ## 3. Publish GitHub source
 
-Create the public `mattbox03/FindMyAdv` repository, push the verified source,
+Use the public `mattbox03/Find_My_adv_ESP_library` repository, push the verified source,
 tag the same version, and attach the generated archive to the release. Do not
 commit the personal `FindMyAdv-configured.zip` produced by Find_My_Web.
 
@@ -54,4 +54,3 @@ Official references:
 - <https://docs.platformio.org/en/latest/librarymanager/creating.html>
 - <https://docs.platformio.org/en/latest/core/userguide/pkg/cmd_publish.html>
 - <https://docs.platformio.org/en/latest/core/userguide/pkg/cmd_pack.html>
-

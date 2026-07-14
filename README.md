@@ -55,7 +55,7 @@ lib_deps = mattbox03/FindMyAdv@^1.0.0
 The GitHub source can also be used directly:
 
 ```ini
-lib_deps = https://github.com/mattbox03/FindMyAdv.git
+lib_deps = https://github.com/mattbox03/Find_My_adv_ESP_library.git
 ```
 
 For a local checkout, copy the complete `FindMyAdv` directory into the
