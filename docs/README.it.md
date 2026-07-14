@@ -45,6 +45,67 @@ void loop() {
 Si può impostare Apple, Google oppure entrambi. Quando sono presenti entrambi,
 la libreria alterna automaticamente i due frame pubblicitari.
 
+## Generazione e registrazione delle chiavi
+
+FindMyAdv gestisce soltanto l'advertising BLE. La generazione delle chiavi, la
+registrazione del tracker, l'autenticazione, il recupero delle posizioni e la
+decifratura dei report sono compiti dei progetti collegati descritti qui sotto.
+La libreria non contatta i servizi Apple o Google e non richiede le credenziali
+dei relativi account.
+
+### Apple Find My / Haystack
+
+Usa [OpenHaystack](https://github.com/seemoo-lab/openhaystack) oppure un sistema
+Haystack compatibile come
+[macless-haystack](https://github.com/dchristl/macless-haystack):
+
+1. Crea un nuovo accessorio in OpenHaystack e copia la sua **chiave pubblica di
+   advertising**; in alternativa esegui `generate_keys.py` di macless-haystack
+   e preleva la chiave Base64 dal file `.keys` generato.
+2. Inserisci quel valore pubblico in `appleAdvertisementKeyBase64`. Deve
+   decodificare esattamente 28 byte (normalmente 40 caratteri Base64, padding
+   compreso).
+3. Conserva la chiave privata nel client/backend Haystack che decifra i report.
+   Non inserire mai nel firmware chiave privata, credenziali Apple o dati 2FA.
+
+FindMyAdv trasmette soltanto la chiave pubblica. Per visualizzare le posizioni
+serve comunque un servizio OpenHaystack/macless-haystack configurato
+correttamente.
+
+### Google Find Hub / Google Find My Tools
+
+Usa [GoogleFindMyTools](https://github.com/leonboe1/GoogleFindMyTools) per
+autenticare l'account e registrare il tracker personalizzato:
+
+1. Segui le istruzioni aggiornate del progetto, installa i requisiti Python ed
+   esegui `main.py`.
+2. Seleziona la registrazione del tracker (`r` nella versione attuale), completa
+   la procedura e copia la chiave di advertising/EID mostrata.
+3. Inseriscila in `googleAdvertisementEidHex`: esattamente 40 caratteri
+   esadecimali (20 byte), senza `0x`, spazi, due punti o trattini.
+
+I segreti di autenticazione restano sul computer che esegue GoogleFindMyTools e
+non vanno copiati sull'ESP32. Anche la registrazione e gli eventuali annunci
+periodici richiesti dal servizio restano responsabilità di GoogleFindMyTools.
+Il protocollo è sperimentale e può cambiare: prima di creare un tracker verifica
+sempre il README aggiornato del progetto originale.
+
+Si può configurare una sola rete oppure entrambe:
+
+```cpp
+FindMyAdvConfig config;
+config.appleAdvertisementKeyBase64 = "CHIAVE_PUBBLICA_APPLE_BASE64"; // o ""
+config.googleAdvertisementEidHex = "0123456789abcdef0123456789abcdef01234567"; // o ""
+
+if (!FindMyAdv.begin(config)) {
+    Serial.println(FindMyAdv.lastError());
+}
+```
+
+Non copiare chiavi da tracker commerciali e non riutilizzare la stessa identità
+su dispositivi indipendenti. Registra e traccia soltanto hardware tuo o per cui
+hai ricevuto autorizzazione.
+
 ## Configurazione dinamica
 
 Le chiavi possono provenire dalla pagina web già presente nel firmware, MQTT,
@@ -85,6 +146,10 @@ modificare la libreria.
   advertising set disponibile.
 - Durante il deep sleep la radio è spenta e non può trasmettere.
 - Le chiavi reali non devono essere pubblicate in repository, log o binari.
+- Chiavi private, password, dati di autenticazione del browser e segreti 2FA non
+  devono mai essere memorizzati nel firmware.
+- Un identificatore pubblico fisso può essere riconoscibile da osservatori BLE
+  nelle vicinanze: valuta questo aspetto di privacy per l'uso previsto.
 
 La descrizione completa di tutti i campi e metodi è in
 [`API.md`](API.md).
