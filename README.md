@@ -46,13 +46,7 @@ BLE hosts.
 
 ### PlatformIO project
 
-After the first public Registry release, installation is a single dependency:
-
-```ini
-lib_deps = mattbox03/FindMyAdv@^1.0.0
-```
-
-The GitHub source can also be used directly:
+Install the library directly from its public GitHub repository:
 
 ```ini
 lib_deps = https://github.com/mattbox03/Find_My_adv_ESP_library.git

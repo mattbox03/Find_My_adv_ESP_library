@@ -31,26 +31,18 @@ Use the public `mattbox03/Find_My_adv_ESP_library` repository, push the verified
 tag the same version, and attach the generated archive to the release. Do not
 commit the personal `FindMyAdv-configured.zip` produced by Find_My_Web.
 
-## 4. Publish to the PlatformIO Registry
+## 4. Verify installation from GitHub
 
-Authenticate once and publish the verified source directory:
-
-```bash
-pio account login
-pio pkg publish . --owner mattbox03
-```
-
-PlatformIO package name/version pairs are immutable after publication. Always
-increment `version` before publishing changed source.
-
-Verify the public package from a clean test project:
+From a clean PlatformIO project, reference the public repository:
 
 ```ini
-lib_deps = mattbox03/FindMyAdv@^1.0.0
+lib_deps = https://github.com/mattbox03/Find_My_adv_ESP_library.git
 ```
+
+Build that project to verify the tagged GitHub source can be installed without
+a local library copy. A PlatformIO Registry account is not required.
 
 Official references:
 
 - <https://docs.platformio.org/en/latest/librarymanager/creating.html>
-- <https://docs.platformio.org/en/latest/core/userguide/pkg/cmd_publish.html>
 - <https://docs.platformio.org/en/latest/core/userguide/pkg/cmd_pack.html>
