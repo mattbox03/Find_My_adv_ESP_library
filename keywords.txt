@@ -1,0 +1,7 @@
+FindMyAdv	KEYWORD1
+FindMyAdvConfig	KEYWORD1
+begin	KEYWORD2
+reconfigure	KEYWORD2
+setKeys	KEYWORD2
+poll	KEYWORD2
+

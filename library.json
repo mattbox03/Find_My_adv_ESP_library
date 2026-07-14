@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/platformio/platformio-core/develop/platformio/assets/schema/library.json",
+  "name": "FindMyAdv",
+  "version": "1.0.0",
+  "description": "Modular Apple Find My and Google Find Hub BLE advertising for BLE-capable ESP32 chips",
+  "keywords": ["esp32", "ble", "find-my", "find-hub", "advertising"],
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Find_My_Web contributors",
+      "maintainer": true
+    }
+  ],
+  "homepage": "https://github.com/mattbox03/FindMyAdv",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mattbox03/FindMyAdv.git"
+  },
+  "frameworks": ["arduino"],
+  "platforms": ["espressif32"],
+  "headers": "FindMyAdv.h",
+  "export": {
+    "exclude": [".git", ".github", ".pio", "ci", "test"]
+  }
+}

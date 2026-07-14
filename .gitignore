@@ -1,0 +1,5 @@
+.pio/
+*.tar.gz
+*.zip
+FindMyAdv-configured.zip
+
