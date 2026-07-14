@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/platformio/platformio-core/develop/platformio/assets/schema/library.json",
   "name": "FindMyAdv",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Modular Apple Find My and Google Find Hub BLE advertising for BLE-capable ESP32 chips",
   "keywords": ["esp32", "ble", "find-my", "find-hub", "advertising"],
   "license": "MIT",
@@ -19,7 +19,18 @@
   "frameworks": ["arduino"],
   "platforms": ["espressif32"],
   "headers": "FindMyAdv.h",
+  "dependencies": {
+    "h2zero/NimBLE-Arduino": "^2.5.0"
+  },
   "export": {
-    "exclude": [".git", ".github", ".pio", "ci", "test"]
+    "exclude": [
+      ".git",
+      ".github",
+      ".pio",
+      "ci",
+      "test",
+      "FindMyAdv-*.zip",
+      "FindMyAdv-*.tar.gz"
+    ]
   }
 }

@@ -17,6 +17,9 @@ Build the standalone integration project for every maintained environment:
 ```bash
 pio run -d ci -e esp32
 pio run -d ci -e esp32c3
+pio run -d ci -e esp32c3_broadcaster
+pio run -d ci -e esp32c3_minimal
+pio run -d ci -e esp32c3_bluedroid
 pio run -d ci -e esp32s3
 pio run -d ci -e esp32c6
 ```
@@ -29,4 +32,3 @@ be added to `CHANGELOG.md`. Examples must use empty placeholder keys.
 Patch releases fix bugs without changing the public API. Minor releases add
 backward-compatible options. Breaking API or configuration changes require a
 new major version.
-

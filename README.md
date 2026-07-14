@@ -27,20 +27,21 @@ Additional references:
 
 | Chip | Bluetooth | Backend | Status |
 | --- | --- | --- | --- |
-| ESP32 | BLE 4.2 | Bluedroid | Supported |
-| ESP32-C3 | BLE 5 | Bluedroid | Supported |
-| ESP32-S3 | BLE 5 | Bluedroid | Supported |
-| ESP32-C6 | BLE 5 | NimBLE | Supported |
-| ESP32-C2 | BLE 5 | Selected from Arduino core | Compatible; not yet in the release build matrix |
-| ESP32-C5 / ESP32-C61 | BLE | Selected from Arduino core | Compatible; requires a supporting Arduino core |
-| ESP32-H2 | BLE 5 | NimBLE | Compatible; build with a supporting Arduino core |
+| ESP32 | BLE 4.2 | NimBLE-Arduino | Supported |
+| ESP32-C3 | BLE 5 | NimBLE-Arduino | Supported |
+| ESP32-S3 | BLE 5 | NimBLE-Arduino | Supported |
+| ESP32-C6 | BLE 5 | NimBLE-Arduino | Supported |
+| ESP32-C2 | BLE 5 | NimBLE-Arduino | Compatible; not yet in the release build matrix |
+| ESP32-C5 / ESP32-C61 | BLE | NimBLE-Arduino | Compatible; requires a supporting Arduino core |
+| ESP32-H2 | BLE 5 | NimBLE-Arduino | Compatible; build with a supporting Arduino core |
 | ESP8266 / ESP32-S2 / ESP32-P4 | No Bluetooth radio | — | Not possible |
 
 The current standalone firmware validates the ESP32, C3, S3, and C6 targets.
-Backend selection uses `CONFIG_BT_NIMBLE_ENABLED` or
-`CONFIG_BT_BLUEDROID_ENABLED`, rather than a hard-coded chip list. New ESP32
-variants therefore work when their Arduino core exposes one of those supported
-BLE hosts.
+The default backend uses NimBLE-Arduino and calls its raw GAP advertiser
+directly. The higher-level scanner, client, server, security, and advertising
+object APIs are not used. A legacy Bluedroid compatibility backend remains
+available through `FINDMYADV_USE_BLUEDROID=1` for applications already tied to
+that host, at a substantially higher memory cost.
 
 ## Installation
 
@@ -51,6 +52,10 @@ Install the library directly from its public GitHub repository:
 ```ini
 lib_deps = https://github.com/mattbox03/Find_My_adv_ESP_library.git
 ```
+
+That is the only project dependency to add. The FindMyAdv manifest resolves
+its single external dependency, `NimBLE-Arduino >= 2.5.0`, automatically. Do
+not also install the old Arduino `ESP32 BLE Arduino` library.
 
 ESP32, ESP32-C3, and ESP32-S3 can use the stable PlatformIO platform:
 
@@ -105,6 +110,53 @@ your-project/
 Put the `FindMyAdv` directory in the Arduino libraries directory, or create a
 ZIP whose root directory is named `FindMyAdv` and use **Sketch > Include
 Library > Add .ZIP Library**.
+
+## Memory profiles
+
+FindMyAdv has two intentional build profiles. The normal profile preserves all
+NimBLE roles so it can share a stack with an application that scans, connects,
+or exposes GATT services. A broadcaster-only application can remove those
+unused roles globally:
+
+```ini
+build_flags =
+    -DCONFIG_BT_NIMBLE_ROLE_CENTRAL_DISABLED
+    -DCONFIG_BT_NIMBLE_ROLE_OBSERVER_DISABLED
+    -DCONFIG_BT_NIMBLE_ROLE_PERIPHERAL_DISABLED
+    -DCONFIG_BT_NIMBLE_MAX_CONNECTIONS=1
+    -DCONFIG_BT_NIMBLE_LOG_LEVEL=5
+    -DCONFIG_NIMBLE_CPP_LOG_LEVEL=0
+```
+
+Use these flags only if no other part of the firmware needs a NimBLE client,
+scanner, or GATT server. They keep the broadcaster role required by
+FindMyAdv. To produce the absolute-smallest build on hardware without a
+LIS3DH/LIS2DH/LIS2DH12, add:
+
+```ini
+    -DFINDMYADV_DISABLE_BUILTIN_ACCELEROMETER=1
+```
+
+This last flag removes only the built-in I2C motion driver; a custom
+`motionDetectedCallback` remains available.
+
+Measured complete ESP32-C3 firmware sizes with Arduino-ESP32 2.0.17,
+PlatformIO `espressif32@7.0.1`, valid disposable Apple/Google identities, and
+manual polling are:
+
+| Build | Flash | Static RAM |
+| --- | ---: | ---: |
+| Empty Arduino sketch | 247,502 B | 13,748 B |
+| FindMyAdv 1.0.0 | 942,484 B | 38,972 B |
+| 1.1 normal/coexistence profile | 481,268 B | 23,980 B |
+| 1.1 broadcaster-only, accelerometer retained | 404,968 B | 21,252 B |
+| 1.1 absolute-minimum, no built-in accelerometer | 382,178 B | 20,956 B |
+
+These are total firmware sizes, not the size of `FindMyAdv.cpp` alone. If the
+host application already uses NimBLE, the Bluetooth stack is shared and is
+not linked a second time. `backgroundTask = false` additionally avoids the
+optional scheduler task and its runtime stack; call `poll()` from the existing
+loop in that mode.
 
 ## Minimal integration
 
@@ -229,6 +281,8 @@ LIS3DH, LIS2DH, and LIS2DH12 accelerometers are supported at I2C address `0x18`
 or `0x19`. Set address `0` to probe both automatically:
 
 ```cpp
+#include <Wire.h>
+
 tracking.accelerometerEnabled = true;
 tracking.accelerometerWire = &Wire; // use &Wire1 for a separate application bus
 tracking.initializeAccelerometerBus = true;

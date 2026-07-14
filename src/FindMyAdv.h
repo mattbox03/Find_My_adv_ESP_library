@@ -1,7 +1,8 @@
 #pragma once
 
 #include <Arduino.h>
-#include <Wire.h>
+
+class TwoWire;
 
 struct FindMyAdvConfig {
     const char *appleAdvertisementKeyBase64 = "";
@@ -11,7 +12,7 @@ struct FindMyAdvConfig {
     uint32_t providerWindowMs = 5000;
 
     bool accelerometerEnabled = false;
-    TwoWire *accelerometerWire = &Wire;
+    TwoWire *accelerometerWire = nullptr;
     bool initializeAccelerometerBus = true;
     int8_t accelerometerSda = 8;
     int8_t accelerometerScl = 9;
@@ -25,6 +26,8 @@ struct FindMyAdvConfig {
 
     // true: no FindMyAdv call is needed from loop(). false: call poll() often.
     bool backgroundTask = true;
+    // Heap used by the optional scheduler task. Manual polling uses no task.
+    uint16_t schedulerTaskStackBytes = 3072;
 };
 
 enum class FindMyAdvStatus : uint8_t {

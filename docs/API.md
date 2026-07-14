@@ -20,6 +20,7 @@
 | `motionHoldMs` | `30000` | Time to keep the motion interval after the last detected movement |
 | `motionDetectedCallback` | `nullptr` | Optional no-argument callback returning true on motion; supports any external sensor or application state |
 | `backgroundTask` | `true` | Runs the scheduler in an internal FreeRTOS task |
+| `schedulerTaskStackBytes` | `3072` | Runtime stack reserved for the optional scheduler task; values below 2048 are raised to 2048 |
 
 ## Methods
 
@@ -68,6 +69,17 @@ component can keep using the initialized stack.
 
 `FindMyAdvStatus` values are `Stopped`, `Running`, `NoValidKey`,
 `BleInitializationFailed`, and `TaskCreationFailed`.
+
+## Compile-time options
+
+| Define | Default | Meaning |
+| --- | ---: | --- |
+| `FINDMYADV_DISABLE_BUILTIN_ACCELEROMETER` | `0` | Set to `1` to compile out `Wire` and the built-in ST LIS driver; custom motion callbacks still work |
+| `FINDMYADV_USE_BLUEDROID` | `0` | Set to `1` only when the host firmware must use the legacy Bluedroid backend |
+
+The broadcaster-only NimBLE flags are documented in the main README. They are
+global stack settings rather than FindMyAdv API options and must not be used
+when another module needs scanning, client, or GATT-server roles.
 
 ## Threading and ownership
 

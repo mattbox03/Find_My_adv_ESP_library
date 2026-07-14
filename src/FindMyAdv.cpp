@@ -1,24 +1,29 @@
 #include "FindMyAdv.h"
 
-#include <Wire.h>
 #include <string.h>
 #include "sdkconfig.h"
 
-#if defined(CONFIG_BT_NIMBLE_ENABLED) && CONFIG_BT_NIMBLE_ENABLED
-#define FINDMYADV_USE_NIMBLE 1
-#include "esp_bt.h"
-#include "nimble/nimble_port.h"
-#include "nimble/nimble_port_freertos.h"
-#include "host/ble_gap.h"
-#include "host/ble_hs.h"
-#include "host/ble_hs_id.h"
-#elif defined(CONFIG_BT_BLUEDROID_ENABLED) && CONFIG_BT_BLUEDROID_ENABLED
-#define FINDMYADV_USE_NIMBLE 0
+#ifndef FINDMYADV_DISABLE_BUILTIN_ACCELEROMETER
+#define FINDMYADV_DISABLE_BUILTIN_ACCELEROMETER 0
+#endif
+
+#if !FINDMYADV_DISABLE_BUILTIN_ACCELEROMETER
+#include <Wire.h>
+#endif
+
+#ifndef FINDMYADV_USE_BLUEDROID
+#define FINDMYADV_USE_BLUEDROID 0
+#endif
+
+#if FINDMYADV_USE_BLUEDROID
+#if !defined(CONFIG_BT_BLUEDROID_ENABLED) || !CONFIG_BT_BLUEDROID_ENABLED
+#error "FINDMYADV_USE_BLUEDROID requires a core built with Bluedroid"
+#endif
 #include "esp_bt.h"
 #include "esp_bt_main.h"
 #include "esp_gap_ble_api.h"
 #else
-#error "FindMyAdv requires an Arduino ESP32 core with NimBLE or Bluedroid enabled"
+#include <NimBLEDevice.h>
 #endif
 
 namespace {
@@ -57,7 +62,7 @@ uint32_t activeInterval = 0;
 uint32_t lastSwitch = 0;
 uint8_t selectedProvider = 0;
 
-#if !FINDMYADV_USE_NIMBLE
+#if FINDMYADV_USE_BLUEDROID
 esp_ble_adv_params_t advParams = {
     .adv_int_min = 0,
     .adv_int_max = 0,
@@ -78,6 +83,10 @@ void copyKey(char *destination, const char *source) {
     if (source) strncpy(destination, source, 40);
 }
 
+bool keyFitsInternalBuffer(const char *source) {
+    return !source || strnlen(source, 42) <= 40;
+}
+
 int base64Value(char value) {
     if (value >= 'A' && value <= 'Z') return value - 'A';
     if (value >= 'a' && value <= 'z') return value - 'a' + 26;
@@ -88,7 +97,8 @@ int base64Value(char value) {
 }
 
 bool decodeApple(const char *input) {
-    if (!input || !input[0]) return false;
+    if (!input || strlen(input) != 40 || input[38] != '=' || input[39] != '=')
+        return false;
     uint32_t accumulator = 0;
     int bits = 0;
     size_t output = 0;
@@ -131,6 +141,7 @@ void buildAppleFrame() {
     memcpy(&appleAddr[1], &appleKey[1], 5);
 }
 
+#if !FINDMYADV_DISABLE_BUILTIN_ACCELEROMETER
 uint8_t readAccelRegister(uint8_t address, uint8_t reg) {
     TwoWire *wire = cfg.accelerometerWire ? cfg.accelerometerWire : &Wire;
     wire->beginTransmission(address);
@@ -150,9 +161,13 @@ bool probeAccelerometer(uint8_t address) {
     accelAddress = address;
     return true;
 }
+#endif
 
 void initializeAccelerometer() {
     accelOk = false;
+#if FINDMYADV_DISABLE_BUILTIN_ACCELEROMETER
+    return;
+#else
     if (!cfg.accelerometerEnabled) return;
     if (!cfg.accelerometerWire) cfg.accelerometerWire = &Wire;
     if (cfg.initializeAccelerometerBus)
@@ -163,8 +178,10 @@ void initializeAccelerometer() {
     } else {
         accelOk = probeAccelerometer(0x18) || probeAccelerometer(0x19);
     }
+#endif
 }
 
+#if !FINDMYADV_DISABLE_BUILTIN_ACCELEROMETER
 int32_t accelerationMagnitude() {
     TwoWire *wire = cfg.accelerometerWire ? cfg.accelerometerWire : &Wire;
     wire->beginTransmission(accelAddress);
@@ -179,10 +196,12 @@ int32_t accelerationMagnitude() {
     z >>= 8;
     return static_cast<int32_t>(abs(x) + abs(y) + abs(z));
 }
+#endif
 
 void updateAccelerometer() {
     bool movementDetected = cfg.motionDetectedCallback &&
                             cfg.motionDetectedCallback();
+#if !FINDMYADV_DISABLE_BUILTIN_ACCELEROMETER
     if (accelOk) {
         const int32_t magnitude = accelerationMagnitude();
         if (magnitude >= 0) {
@@ -195,6 +214,7 @@ void updateAccelerometer() {
             accelPrevious = magnitude;
         }
     }
+#endif
     if (movementDetected) {
         motionUntil = millis() + cfg.motionHoldMs;
     }
@@ -209,6 +229,7 @@ uint32_t currentIntervalMs() {
     return isMoving() ? cfg.motionIntervalMs : cfg.advertisingIntervalMs;
 }
 
+#if FINDMYADV_USE_BLUEDROID
 esp_power_level_t powerLevelFor(int8_t dbm) {
     if (dbm <= -12) return ESP_PWR_LVL_N12;
     if (dbm <= -9) return ESP_PWR_LVL_N9;
@@ -219,30 +240,14 @@ esp_power_level_t powerLevelFor(int8_t dbm) {
     if (dbm <= 6) return ESP_PWR_LVL_P6;
     return ESP_PWR_LVL_P9;
 }
+#endif
 
-#if FINDMYADV_USE_NIMBLE
-volatile bool nimbleSynced = false;
-
-void onNimbleSync() {
-    nimbleSynced = true;
-}
-
-void nimbleHostTask(void *) {
-    nimble_port_run();
-    nimble_port_freertos_deinit();
-}
-
+#if !FINDMYADV_USE_BLUEDROID
 bool initializeBleStack() {
-    nimbleSynced = ble_hs_synced();
-    if (!nimbleSynced) {
-        if (nimble_port_init() != 0) return false;
-        ble_hs_cfg.sync_cb = onNimbleSync;
-        nimble_port_freertos_init(nimbleHostTask);
-        const uint32_t startedAt = millis();
-        while (!nimbleSynced && millis() - startedAt < 5000) delay(10);
+    if (!NimBLEDevice::isInitialized() && !NimBLEDevice::init("")) {
+        return false;
     }
-    if (!nimbleSynced) return false;
-    esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_ADV, powerLevelFor(cfg.txPowerDbm));
+    NimBLEDevice::setPower(cfg.txPowerDbm, NimBLETxPowerType::Advertise);
     return true;
 }
 
@@ -250,18 +255,27 @@ void startProvider(const uint8_t *address, uint8_t *data, uint8_t length) {
     activeInterval = currentIntervalMs();
     const uint16_t units = static_cast<uint16_t>((activeInterval * 8) / 5);
     ble_gap_adv_stop();
-    uint8_t reversed[6];
-    for (int i = 0; i < 6; ++i) reversed[i] = address[5 - i];
-    ble_hs_id_set_rnd(reversed);
-    ble_gap_adv_set_data(data, length);
-    ble_gap_adv_params parameters;
-    memset(&parameters, 0, sizeof(parameters));
+
+    uint8_t reversedAddress[6];
+    for (uint8_t i = 0; i < sizeof(reversedAddress); ++i) {
+        reversedAddress[i] = address[sizeof(reversedAddress) - 1 - i];
+    }
+    if (!NimBLEDevice::setOwnAddr(reversedAddress) ||
+        !NimBLEDevice::setOwnAddrType(BLE_OWN_ADDR_RANDOM) ||
+        ble_gap_adv_set_data(data, length) != 0) {
+        activeInterval = 0;
+        return;
+    }
+
+    ble_gap_adv_params parameters{};
     parameters.conn_mode = BLE_GAP_CONN_MODE_NON;
-    parameters.disc_mode = BLE_GAP_DISC_MODE_GEN;
+    parameters.disc_mode = BLE_GAP_DISC_MODE_NON;
     parameters.itvl_min = units;
     parameters.itvl_max = units;
-    ble_gap_adv_start(BLE_OWN_ADDR_RANDOM, nullptr, BLE_HS_FOREVER,
-                      &parameters, nullptr, nullptr);
+    if (ble_gap_adv_start(BLE_OWN_ADDR_RANDOM, nullptr, BLE_HS_FOREVER,
+                          &parameters, nullptr, nullptr) != 0) {
+        activeInterval = 0;
+    }
 }
 
 void stopAdvertising() {
@@ -400,6 +414,13 @@ FindMyAdvClass FindMyAdv;
 bool FindMyAdvClass::begin(const FindMyAdvConfig &configuration) {
     if (running) return true;
 
+    if (!keyFitsInternalBuffer(configuration.appleAdvertisementKeyBase64) ||
+        !keyFitsInternalBuffer(configuration.googleAdvertisementEidHex)) {
+        currentStatus = FindMyAdvStatus::NoValidKey;
+        errorText = "Advertising keys must not exceed 40 characters";
+        return false;
+    }
+
     cfg = configuration;
     copyKey(appleText, cfg.appleAdvertisementKeyBase64);
     copyKey(googleText, cfg.googleAdvertisementEidHex);
@@ -410,6 +431,8 @@ bool FindMyAdvClass::begin(const FindMyAdvConfig &configuration) {
     if (cfg.motionIntervalMs < 20 || cfg.motionIntervalMs > 10240)
         cfg.motionIntervalMs = 200;
     if (cfg.providerWindowMs < 100) cfg.providerWindowMs = 5000;
+    if (cfg.schedulerTaskStackBytes < 2048)
+        cfg.schedulerTaskStackBytes = 2048;
 
     appleEnabled = decodeApple(appleText);
     googleEnabled = decodeGoogle(googleText);
@@ -433,8 +456,18 @@ bool FindMyAdvClass::begin(const FindMyAdvConfig &configuration) {
     stopRequested = false;
     running = true;
     schedulerPoll();
+#if !FINDMYADV_USE_BLUEDROID
+    if (activeInterval == 0) {
+        running = false;
+        stopAdvertising();
+        currentStatus = FindMyAdvStatus::BleInitializationFailed;
+        errorText = "BLE advertising start failed";
+        return false;
+    }
+#endif
     if (cfg.backgroundTask &&
-        xTaskCreate(schedulerTaskEntry, "FindMyAdv", 4096, nullptr, 1,
+        xTaskCreate(schedulerTaskEntry, "FindMyAdv",
+                    cfg.schedulerTaskStackBytes, nullptr, 1,
                     &schedulerTask) != pdPASS) {
         running = false;
         stopAdvertising();
@@ -452,6 +485,12 @@ bool FindMyAdvClass::reconfigure(const FindMyAdvConfig &configuration) {
     // The caller is allowed to pass pointers returned by its own settings
     // store, or even the values currently used by this library. Preserve both
     // strings before end()/begin() changes the internal buffers.
+    if (!keyFitsInternalBuffer(configuration.appleAdvertisementKeyBase64) ||
+        !keyFitsInternalBuffer(configuration.googleAdvertisementEidHex)) {
+        currentStatus = FindMyAdvStatus::NoValidKey;
+        errorText = "Advertising keys must not exceed 40 characters";
+        return false;
+    }
     char nextApple[41];
     char nextGoogle[41];
     copyKey(nextApple, configuration.appleAdvertisementKeyBase64);

@@ -10,9 +10,10 @@ Apple, Google o Espressif.
 
 ## Compatibilità
 
-Sono verificati ESP32 classico, ESP32-C3, ESP32-S3 ed ESP32-C6. La selezione
-automatica dello stack permette di usare anche ESP32-C2, C5, C61 e H2 quando
-il relativo core Arduino espone NimBLE o Bluedroid.
+Sono verificati ESP32 classico, ESP32-C3, ESP32-S3 ed ESP32-C6. Il backend
+predefinito usa NimBLE-Arduino e il GAP a basso livello; ESP32-C2, C5, C61 e H2
+sono compatibili quando il relativo core Arduino supporta il chip. Bluedroid
+rimane soltanto un'opzione di compatibilità, più pesante.
 ESP8266, ESP32-S2 ed ESP32-P4 non possono essere supportati perché non hanno
 una radio Bluetooth.
 
@@ -23,6 +24,10 @@ Con PlatformIO puoi installare direttamente la libreria pubblica:
 ```ini
 lib_deps = https://github.com/mattbox03/Find_My_adv_ESP_library.git
 ```
+
+È l'unica dipendenza da dichiarare. Il manifest installa automaticamente
+`NimBLE-Arduino >= 2.5.0`; non aggiungere la vecchia libreria `ESP32 BLE
+Arduino`.
 
 ESP32, ESP32-C3 ed ESP32-S3 possono usare `espressif32@7.0.1`. Per ESP32-C6
 serve Arduino-ESP32 3.x; questa configurazione è verificata:
@@ -51,6 +56,38 @@ compilazioni successive riutilizzano `.pio-packages-c6`.
 Per un'installazione locale puoi invece copiare l'intera cartella `FindMyAdv`
 nella cartella `lib` del progetto. Con Arduino IDE, installa lo ZIP della
 libreria tramite **Sketch > Include Library > Add .ZIP Library**.
+
+## Profilo BLE leggero
+
+Il profilo normale conserva tutti i ruoli NimBLE ed è quello giusto se il
+firmware principale usa anche scansione, connessioni o un server GATT. Se
+l'ESP deve soltanto trasmettere advertising, aggiungi questi flag:
+
+```ini
+build_flags =
+    -DCONFIG_BT_NIMBLE_ROLE_CENTRAL_DISABLED
+    -DCONFIG_BT_NIMBLE_ROLE_OBSERVER_DISABLED
+    -DCONFIG_BT_NIMBLE_ROLE_PERIPHERAL_DISABLED
+    -DCONFIG_BT_NIMBLE_MAX_CONNECTIONS=1
+    -DCONFIG_BT_NIMBLE_LOG_LEVEL=5
+    -DCONFIG_NIMBLE_CPP_LOG_LEVEL=0
+```
+
+In questo modo non vengono inclusi client, scanner, server GATT e log dello
+stack; il ruolo broadcaster resta attivo. Non usare questi flag se un'altra
+parte del programma richiede quei ruoli. Su un ESP32-C3 di prova il firmware
+completo è passato da 942.484 byte della versione 1.0.0 a 404.968 byte,
+mantenendo il supporto all'accelerometro.
+
+Solo per una scheda senza LIS3DH/LIS2DH/LIS2DH12 puoi aggiungere anche:
+
+```ini
+    -DFINDMYADV_DISABLE_BUILTIN_ACCELEROMETER=1
+```
+
+Il firmware di prova scende a 382.178 byte. Il callback personalizzato di
+movimento continua a funzionare. Se il progetto usa già NimBLE, lo stack viene
+condiviso e non viene collegato una seconda volta.
 
 ## Uso minimo
 
@@ -163,6 +200,8 @@ un portale Wi-Fi, un filesystem o uno specifico formato di credenziali.
 Sono supportati LIS3DH, LIS2DH e LIS2DH12 agli indirizzi I2C `0x18` e `0x19`.
 Con indirizzo `0` il rilevamento è automatico. Durante il movimento si può usare
 un intervallo più rapido e tornare a quello di riposo dopo `motionHoldMs`.
+
+Quando assegni `&Wire` o `&Wire1` includi esplicitamente `<Wire.h>` nel firmware.
 
 Per qualsiasi altro accelerometro, IMU, sensore a vibrazione o stato del
 programma si può assegnare una funzione a `motionDetectedCallback`: non occorre

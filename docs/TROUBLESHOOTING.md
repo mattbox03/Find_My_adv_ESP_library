@@ -9,7 +9,10 @@ Read `FindMyAdv.lastError()` and `FindMyAdv.status()`.
 - `BleInitializationFailed`: another library may own an incompatible BLE host,
   or the selected Arduino core may not support that chip's Bluetooth stack.
 - `TaskCreationFailed`: the application does not have enough free RAM for the
-  4096-byte scheduler task. Use manual polling when necessary.
+  scheduler task (3072 bytes by default). Use manual polling when necessary.
+
+`BleInitializationFailed` also covers a failure to start the first NimBLE
+advertisement; `begin()` no longer reports success in that state.
 
 ## The firmware runs but no packet is visible
 
@@ -40,6 +43,15 @@ Check `isAppleEnabled()` and `isGoogleEnabled()` to detect a malformed key.
 FindMyAdv and the service are trying to own the same legacy advertising set.
 Stop one before starting the other or implement an application-level schedule.
 This cannot be solved transparently by two independent libraries.
+
+## Firmware size is too large
+
+Do not replace NimBLE with Bluedroid to save space; the compatibility backend
+is considerably larger on the tested ESP32/C3 toolchain. Use the
+broadcaster-only build flags in the main README when the host firmware does not
+need scanning, client, or GATT-server roles. If it already uses NimBLE, keep the
+normal profile: FindMyAdv shares that same stack rather than linking another
+one. Use `backgroundTask = false` to avoid the scheduler task's runtime stack.
 
 ## C6/H2 does not compile
 

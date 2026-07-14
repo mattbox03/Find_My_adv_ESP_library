@@ -7,6 +7,9 @@ Build every target from the standalone library repository:
 ```bash
 pio run -d ci -e esp32
 pio run -d ci -e esp32c3
+pio run -d ci -e esp32c3_broadcaster
+pio run -d ci -e esp32c3_minimal
+pio run -d ci -e esp32c3_bluedroid
 pio run -d ci -e esp32s3
 pio run -d ci -e esp32c6
 ```
@@ -19,7 +22,7 @@ same semantic version in `library.json` and `library.properties`.
 From the repository root:
 
 ```bash
-pio pkg pack . --output FindMyAdv-1.0.0.tar.gz
+pio pkg pack . --output FindMyAdv-1.1.0.tar.gz
 ```
 
 Inspect the archive before publishing. The PlatformIO CLI validates the
