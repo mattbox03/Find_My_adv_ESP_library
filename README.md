@@ -52,6 +52,41 @@ Install the library directly from its public GitHub repository:
 lib_deps = https://github.com/mattbox03/Find_My_adv_ESP_library.git
 ```
 
+ESP32, ESP32-C3, and ESP32-S3 can use the stable PlatformIO platform:
+
+```ini
+[env:esp32c3]
+platform = espressif32@7.0.1
+board = esp32-c3-devkitm-1
+framework = arduino
+lib_deps = https://github.com/mattbox03/Find_My_adv_ESP_library.git
+```
+
+ESP32-C6 needs an Arduino-ESP32 3.x platform. This configuration is tested:
+
+```ini
+[env:esp32c6]
+platform = https://github.com/pioarduino/platform-espressif32/releases/download/55.03.39/platform-espressif32.zip
+platform_packages =
+    framework-arduinoespressif32 @ https://github.com/espressif/arduino-esp32/releases/download/3.3.9/esp32-core-3.3.9.tar.xz
+board = esp32-c6-devkitc-1
+framework = arduino
+lib_deps = https://github.com/mattbox03/Find_My_adv_ESP_library.git
+```
+
+On a Windows machine that has already installed Arduino-ESP32 2.x, PlatformIO
+may reuse that same-named framework package instead of the C6 override. Build
+the C6 environment with an isolated package directory to avoid the collision:
+
+```powershell
+$env:PLATFORMIO_PACKAGES_DIR="$PWD\.pio-packages-c6"
+pio run -e esp32c6
+```
+
+The first isolated build downloads the complete C6 toolchain and can take
+several minutes. Later builds reuse `.pio-packages-c6`. See
+[`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) for the Bash equivalent.
+
 For a local checkout, copy the complete `FindMyAdv` directory into the
 project's `lib` directory:
 

@@ -44,6 +44,27 @@ This cannot be solved transparently by two independent libraries.
 ## C6/H2 does not compile
 
 Use an Arduino-ESP32 3.x platform that includes NimBLE for the selected target.
-The standalone Find_My_Web project pins a known C6-compatible pioarduino
-platform as a reproducible reference.
+The repository's `ci/platformio.ini` pins a tested C6-compatible pioarduino
+platform and Arduino-ESP32 core.
 
+PlatformIO stores packages by canonical name. If Arduino-ESP32 2.x is already
+installed, it may be selected instead of a same-named 3.x override and cause an
+early framework error such as `FRAMEWORK_DIR None`. Isolate the C6 packages
+from the global cache:
+
+PowerShell:
+
+```powershell
+$env:PLATFORMIO_PACKAGES_DIR="$PWD\.pio-packages-c6"
+pio run -e esp32c6
+```
+
+Bash:
+
+```bash
+PLATFORMIO_PACKAGES_DIR="$PWD/.pio-packages-c6" pio run -e esp32c6
+```
+
+Keep the `platform` and `platform_packages` values shown in the main README.
+The first build downloads the complete framework and RISC-V toolchain; later
+builds reuse the isolated directory.

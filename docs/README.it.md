@@ -18,9 +18,39 @@ una radio Bluetooth.
 
 ## Installazione
 
-Con PlatformIO, copia l'intera cartella `FindMyAdv` nella cartella `lib` del
-progetto. Con Arduino IDE, installa lo ZIP della libreria tramite **Sketch >
-Include Library > Add .ZIP Library**.
+Con PlatformIO puoi installare direttamente la libreria pubblica:
+
+```ini
+lib_deps = https://github.com/mattbox03/Find_My_adv_ESP_library.git
+```
+
+ESP32, ESP32-C3 ed ESP32-S3 possono usare `espressif32@7.0.1`. Per ESP32-C6
+serve Arduino-ESP32 3.x; questa configurazione è verificata:
+
+```ini
+[env:esp32c6]
+platform = https://github.com/pioarduino/platform-espressif32/releases/download/55.03.39/platform-espressif32.zip
+platform_packages =
+    framework-arduinoespressif32 @ https://github.com/espressif/arduino-esp32/releases/download/3.3.9/esp32-core-3.3.9.tar.xz
+board = esp32-c6-devkitc-1
+framework = arduino
+lib_deps = https://github.com/mattbox03/Find_My_adv_ESP_library.git
+```
+
+Se su Windows è già presente Arduino-ESP32 2.x, PlatformIO può riutilizzare
+per errore quel pacchetto omonimo al posto del core C6. Usa una cache isolata:
+
+```powershell
+$env:PLATFORMIO_PACKAGES_DIR="$PWD\.pio-packages-c6"
+pio run -e esp32c6
+```
+
+Il primo avvio scarica l'intera toolchain e può richiedere diversi minuti; le
+compilazioni successive riutilizzano `.pio-packages-c6`.
+
+Per un'installazione locale puoi invece copiare l'intera cartella `FindMyAdv`
+nella cartella `lib` del progetto. Con Arduino IDE, installa lo ZIP della
+libreria tramite **Sketch > Include Library > Add .ZIP Library**.
 
 ## Uso minimo
 
