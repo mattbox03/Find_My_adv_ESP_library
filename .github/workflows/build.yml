@@ -20,6 +20,9 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install platformio==6.1.19
+      - name: Install ESP32-C6 Arduino core override
+        if: matrix.environment == 'esp32c6'
+        run: pio pkg install -d ci -e esp32c6
       - run: pio run -d ci -e ${{ matrix.environment }}
 
   package:
