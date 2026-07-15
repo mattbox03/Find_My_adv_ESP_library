@@ -2,4 +2,9 @@
 *.tar.gz
 *.zip
 FindMyAdv-configured.zip
-
+**/.env
+!**/.env.example
+**/FindMyAdvGeneratedConfig.h
+**/*.pem
+**/*.p12
+**/*.pfx
